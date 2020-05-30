@@ -1,5 +1,6 @@
 #ifndef KEYBOARD_H
 #define KEYBOARD_H
+#include <stdbool.h>
 #include "config.h"
 
 typedef struct chip8_keyboard

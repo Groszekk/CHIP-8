@@ -1,11 +1,13 @@
 #ifndef SCREEN_H
 #define SCREEN_H
 #include "config.h"
+#include <stdbool.h>
+#include <assert.h>
 
-typedef struct chip8_screen
+struct chip8_screen
 {
     bool pixels[CHIP8_HEIGHT][CHIP8_WIDTH];
-} screen;
+};
 
 void CHIP8ScreenClear(struct chip8_screen* screen);
 void CHIP8ScreenSet(struct chip8_screen* screen, int x, int y);

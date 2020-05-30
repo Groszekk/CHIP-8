@@ -9,137 +9,6 @@
 #include <stdlib.h>
 #include <time.h>
 
-void StackBound(struct chip8* chip8)
-{
-    assert(chip8->registers.SP < sizeof(chip8->stack.stack));    
-}
-
-void CHIP8StackPush(struct chip8* chip8, __u_short val)
-{
-    chip8->registers.SP += 1;
-    StackBound(chip8);
-
-    chip8->stack.stack[chip8->registers.SP] = val;
-}
-
-__u_short CHIP8StackPop(struct chip8* chip8)
-{
-    StackBound(chip8);
-    
-    __u_short result = chip8->stack.stack[chip8->registers.SP];
-    chip8->registers.SP -=1;
-    return result;
-}
-
-void ScreenBound(int x, int y)
-{
-    assert(x >= 0 && x < CHIP8_WIDTH && y >= 0 && y < CHIP8_HEIGHT);
-}
-
-void CHIP8ScreenSet(struct chip8_screen* screen, int x, int y)
-{
-    ScreenBound(x, y);
-    screen->pixels[y][x] = true;
-}
-
-
-void CHIP8ScreenClear(struct chip8_screen* screen)
-{
-    memset(screen->pixels, 0, sizeof(screen->pixels));
-}
-
-bool CHIP8ScreenIsSet(struct chip8_screen* screen, int x, int y)
-{
-    ScreenBound(x, y);
-    return screen->pixels[y][x];
-}
-
-bool CHIP8ScreenDrawSprite(struct chip8_screen* screen, int x, int y, const char* sprite, int num)
-{
-    bool pixel_collison = false;
-
-    for (int ly = 0; ly < num; ly++)
-    {
-        char c = sprite[ly];
-        for (int lx = 0; lx < 8; lx++)
-        {
-            if ((c & (0b10000000 >> lx)) == 0)
-                continue;
-            
-            if (screen->pixels[(ly+y) % CHIP8_HEIGHT][(lx+x) % CHIP8_WIDTH])
-            {
-                pixel_collison = true;
-            }
-
-            screen->pixels[(ly+y) % CHIP8_HEIGHT][(lx+x) % CHIP8_WIDTH] ^= true;
-        }
-    }
-    return pixel_collison;
-}
-
-void KeyboardBound(int key)
-{
-    assert(key >= 0 && key < CHIP8_TOTAL_KEYS);
-}
-
-void CHIP8KeyboardSetMap(struct chip8_keyboard* keyboard, const char* map)
-{
-    keyboard->keyboard_map = map;
-}
-
-int CHIP8KeyboardMap(struct chip8_keyboard* keyboard, char key)
-{
-    
-    for (int i = 0; i < CHIP8_TOTAL_KEYS; i++)
-    {
-        if (keyboard->keyboard_map[i] == key)
-        {
-            return i;
-        }
-    }
-
-    return -1;
-}
-
-void CHIP8KeyboardDown(struct chip8_keyboard* keyboard, int key)
-{
-    keyboard->keyboard[key] = true;
-}
-
-void CHIP8KeyboarUp(struct chip8_keyboard* keyboard, int key)
-{
-    keyboard->keyboard[key] = false;
-}
-
-bool CHIP8KeyboarIsDown(struct chip8_keyboard* keyboard, int key)
-{
-    return keyboard->keyboard[key];
-}
-
-void MemoryBound(int index)
-{
-    assert(index >= 0 && index < CHIP8_MEMORY_SIZE);
-}
-
-void CHIP8MemorySet(struct chip8_memory* memory, int index, __u_char val)
-{
-    MemoryBound(index);
-    memory->memory[index] = val;
-}
-
-__u_char CHIP8MemoryGet(struct chip8_memory* memory, int index)
-{
-    MemoryBound(index);
-    return memory->memory[index];
-}
-
-__u_short CHIP8MemoryGetShort(struct chip8_memory* memory, int index)
-{
-    __u_char byte1 = CHIP8MemoryGet(memory, index);
-    __u_char byte2 = CHIP8MemoryGet(memory, index+1);
-    return byte1 << 8 | byte2;
-}
-
 const char keyboard_map[CHIP8_TOTAL_KEYS] = {
     SDLK_0, SDLK_1, SDLK_2, SDLK_3, SDLK_4, SDLK_5,
     SDLK_6, SDLK_7, SDLK_8, SDLK_9, SDLK_a, SDLK_b,
@@ -177,7 +46,7 @@ void CHIP8Load(struct chip8* chip8, const char* buf, size_t size)
     chip8->registers.PC = CHIP8_PROGRAM_LOAD_ADDRESS;
 }
 
-void chip8_exec_extended_eight(struct chip8* chip8, __u_short opcode)
+void CHIP8ExecExtendedEight(struct chip8* chip8, __u_short opcode)
 {
     __u_char x = (opcode >> 8) & 0x000f;
     __u_char y = (opcode >> 4) & 0x000f;
@@ -238,7 +107,7 @@ void chip8_exec_extended_eight(struct chip8* chip8, __u_short opcode)
     }
 }
 
-char chip8_wait_for_key_press(struct chip8* chip8)
+char CHIP8WaitForPressKey(struct chip8* chip8)
 {
     SDL_Event event;
     while(SDL_WaitEvent(&event))
@@ -257,7 +126,7 @@ char chip8_wait_for_key_press(struct chip8* chip8)
     return -1;
 }
 
-void chip8_exec_extended_F(struct chip8* chip8, __u_short opcode)
+void CHIP8ExecExtendedF(struct chip8* chip8, __u_short opcode)
 {
     __u_char x = (opcode >> 8) & 0x000f;
     switch (opcode & 0x00ff)
@@ -268,7 +137,7 @@ void chip8_exec_extended_F(struct chip8* chip8, __u_short opcode)
 
         case 0x0A:
         {
-            char pressed_key = chip8_wait_for_key_press(chip8);
+            char pressed_key = CHIP8WaitForPressKey(chip8);
             chip8->registers.V[x] = pressed_key;
         }
         break; 
@@ -322,7 +191,7 @@ void chip8_exec_extended_F(struct chip8* chip8, __u_short opcode)
     }
 }
 
-void chip8_exec_extended(struct chip8* chip8, __u_short opcode)
+void CHIP8ExecExtended(struct chip8* chip8, __u_short opcode)
 {
     __u_short nnn = opcode & 0x0fff;
     __u_char x = (opcode >> 8) & 0x000f;
@@ -370,7 +239,7 @@ void chip8_exec_extended(struct chip8* chip8, __u_short opcode)
         break;
 
         case 0x8000:
-            chip8_exec_extended_eight(chip8, opcode);
+            CHIP8ExecExtendedEight(chip8, opcode);
         break;
 
         case 0x9000:
@@ -422,7 +291,7 @@ void chip8_exec_extended(struct chip8* chip8, __u_short opcode)
         break;
         
         case 0xF000:
-            chip8_exec_extended_F(chip8, opcode);
+            CHIP8ExecExtendedF(chip8, opcode);
         break;
 
     }
@@ -441,7 +310,7 @@ void CHIP8Exec(struct chip8* chip8, __u_short opcode)
         break;
 
         default:
-            chip8_exec_extended(chip8, opcode);
+            CHIP8ExecExtended(chip8, opcode);
     }
 }
 
